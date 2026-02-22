@@ -1,0 +1,66 @@
+{
+  "version": "1.0",
+  "episode_length_minutes": 25,
+  "target_word_count": 3400,
+  "words_per_minute": 136,
+  "hosts": {
+    "host_1": {
+      "name": "HANS",
+      "voice_id": "REPLACE_WITH_ELEVENLABS_VOICE_ID",
+      "accent": "Austrian",
+      "speaker_tag": "HANS:"
+    },
+    "host_2": {
+      "name": "FLINT",
+      "voice_id": "REPLACE_WITH_ELEVENLABS_VOICE_ID",
+      "accent": "Texan",
+      "speaker_tag": "FLINT:"
+    }
+  },
+  "segments": {
+    "cold_open": {
+      "duration_minutes": 2,
+      "target_words": 300,
+      "notes": "meta banter, not a news story"
+    },
+    "story_rapidfire": {
+      "duration_minutes": 18,
+      "target_words": 2400,
+      "story_range": { "min": 10, "max": 14 },
+      "time_per_story": {
+        "lightweight": "60s",
+        "standard": "90s",
+        "heavyweight": "2min"
+      }
+    },
+    "read_these": {
+      "duration_minutes": 3,
+      "target_words": 400,
+      "deep_dive_count": { "min": 3, "max": 4 },
+      "closing_lines": {
+        "hans": "Links are in your WhatsApp. You know what to do.",
+        "flint": "We'll be here tomorrow.",
+        "hans_final": "Unfortunately."
+      }
+    },
+    "sign_off": {
+      "duration_minutes": 2,
+      "target_words": 250,
+      "format": "Flint prediction + Hans rates it delusional to obvious",
+      "closing_lines": {
+        "flint": "I stand by it.",
+        "hans": "You always do."
+      }
+    }
+  },
+  "publish_time": "06:00",
+  "timezone": "operator_local",
+  "pipeline_start": "03:00",
+  "audio": {
+    "jingle_path": "/assets/jingle.mp3",
+    "jingle_duration_seconds": 10,
+    "output_format": "mp3",
+    "normalize": true,
+    "background_bed": false
+  }
+}

@@ -1,0 +1,134 @@
+{
+  "version": "1.0",
+  "last_updated": "2026-02-22",
+  "rotation_check": "biweekly",
+  "rotation_approval": "whatsapp",
+  "sources": [
+    {
+      "name": "Ars Technica AI",
+      "url": "https://arstechnica.com/ai/",
+      "rss": "https://arstechnica.com/feed/",
+      "tier": 1,
+      "active": true,
+      "type": "rss",
+      "filter_tag": "ai"
+    },
+    {
+      "name": "TechCrunch AI",
+      "url": "https://techcrunch.com/category/artificial-intelligence/",
+      "rss": "https://techcrunch.com/feed/",
+      "tier": 1,
+      "active": true,
+      "type": "rss",
+      "filter_tag": "artificial-intelligence"
+    },
+    {
+      "name": "VentureBeat AI",
+      "url": "https://venturebeat.com/category/ai/",
+      "rss": "https://venturebeat.com/feed/",
+      "tier": 1,
+      "active": true,
+      "type": "rss",
+      "filter_tag": "ai"
+    },
+    {
+      "name": "OpenAI Blog",
+      "url": "https://openai.com/blog",
+      "rss": "https://openai.com/blog/rss.xml",
+      "tier": 0,
+      "active": true,
+      "type": "rss",
+      "note": "tier 0 — auto-promote any new post to top story"
+    },
+    {
+      "name": "Google DeepMind Blog",
+      "url": "https://deepmind.google/discover/blog/",
+      "rss": "https://deepmind.google/blog/rss.xml",
+      "tier": 0,
+      "active": true,
+      "type": "rss",
+      "note": "tier 0 — auto-promote any new post to top story"
+    },
+    {
+      "name": "Anthropic News",
+      "url": "https://www.anthropic.com/news",
+      "rss": "https://www.anthropic.com/rss.xml",
+      "tier": 0,
+      "active": true,
+      "type": "rss",
+      "note": "tier 0 — auto-promote any new post to top story"
+    },
+    {
+      "name": "The Rundown AI",
+      "url": "https://www.therundown.ai/",
+      "rss": null,
+      "tier": 1,
+      "active": true,
+      "type": "email",
+      "note": "ingest via n8n email trigger, parse newsletter body"
+    },
+    {
+      "name": "Hacker News",
+      "url": "https://news.ycombinator.com/",
+      "rss": "https://hnrss.org/frontpage",
+      "tier": 1,
+      "active": true,
+      "type": "rss",
+      "filter": "score >= 100",
+      "keywords": [
+        "AI", "LLM", "agent", "model", "OpenAI", "Anthropic",
+        "machine learning", "neural", "GPT", "claude", "agentic"
+      ]
+    }
+  ],
+  "rotation_pool": [
+    {
+      "name": "MIT Technology Review AI",
+      "url": "https://www.technologyreview.com/topic/artificial-intelligence/",
+      "rss": "https://www.technologyreview.com/feed/",
+      "tier": 1,
+      "active": false,
+      "note": "paywalled body, headlines only"
+    },
+    {
+      "name": "Financial Times AI",
+      "url": "https://www.ft.com/artificial-intelligence",
+      "rss": null,
+      "tier": 1,
+      "active": false,
+      "note": "paywalled, headlines only via scrape"
+    },
+    {
+      "name": "Import AI",
+      "url": "https://jack-clark.net/",
+      "rss": "https://jack-clark.net/feed/",
+      "tier": 1,
+      "active": false,
+      "note": "weekly newsletter, high signal, research-heavy"
+    },
+    {
+      "name": "Ahead of AI",
+      "url": "https://magazine.sebastianraschka.com/",
+      "rss": "https://magazine.sebastianraschka.com/feed",
+      "tier": 1,
+      "active": false,
+      "note": "research-focused, good for technical depth weeks"
+    },
+    {
+      "name": "r/MachineLearning",
+      "url": "https://www.reddit.com/r/MachineLearning/",
+      "rss": "https://www.reddit.com/r/MachineLearning/.rss",
+      "tier": 2,
+      "active": false,
+      "filter": "score >= 200"
+    },
+    {
+      "name": "r/LocalLLaMA",
+      "url": "https://www.reddit.com/r/LocalLLaMA/",
+      "rss": "https://www.reddit.com/r/LocalLLaMA/.rss",
+      "tier": 2,
+      "active": false,
+      "filter": "score >= 200"
+    }
+  ]
+}

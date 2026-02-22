@@ -1,0 +1,33 @@
+{
+  "version": "1.0",
+  "currency": "USD",
+  "monthly_limit": 150,
+  "warning_threshold": 120,
+  "hard_pause_threshold": 145,
+  "daily_limit": 6,
+  "daily_warning": 5,
+  "services": {
+    "anthropic": {
+      "estimated_monthly": 20,
+      "alert_if_daily_exceeds": 1.50
+    },
+    "elevenlabs": {
+      "plan": "creator",
+      "plan_cost": 22,
+      "estimated_monthly": 22,
+      "alert_if_daily_exceeds": 1.00
+    },
+    "buzzsprout": {
+      "plan": "unlimited",
+      "plan_cost": 12,
+      "estimated_monthly": 12,
+      "alert_if_daily_exceeds": 0
+    },
+    "meta_whatsapp": {
+      "estimated_monthly": 5,
+      "alert_if_daily_exceeds": 0.50
+    }
+  },
+  "estimated_total_monthly": 59,
+  "headroom": 91
+}
