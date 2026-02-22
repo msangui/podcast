@@ -20,7 +20,7 @@ Query each API daily after the episode publishes:
 | Anthropic | tokens used, cost per run | /v1/usage |
 | ElevenLabs | characters generated, credits used | /v1/user/subscription |
 | Buzzsprout | storage used, plan status | /2/podcasts/{id} |
-| Meta WhatsApp | messages sent, conversation costs | Graph API /messages |
+| Telegram | messages sent | Bot API /getUpdates |
 
 Convert all usage to USD cost immediately. Store a running daily log.
 
@@ -32,16 +32,16 @@ Loaded from /config/budget.json at runtime.
 
 ### Threshold Behavior
 
-**Daily warning ($5+):** Send WhatsApp alert. Do not pause. Investigate cause.
+**Daily warning ($5+):** Send Telegram alert. Do not pause. Investigate cause.
 
-**Daily hard limit ($6+):** Send WhatsApp alert with breakdown. Flag which
+**Daily hard limit ($6+):** Send Telegram alert with breakdown. Flag which
 service spiked. Do not pause unless instructed.
 
-**Monthly warning ($120):** Send WhatsApp alert with projection for month-end
+**Monthly warning ($120):** Send Telegram alert with projection for month-end
 spend at current rate. Suggest one cost reduction option.
 
 **Monthly hard pause ($145):** Automatically pause all n8n workflows via API.
-Send WhatsApp alert immediately. Do not resume until operator confirms.
+Send Telegram alert immediately. Do not resume until operator confirms.
 
 ---
 
@@ -62,7 +62,7 @@ Reply INVESTIGATE or IGNORE
 
 ---
 
-## WhatsApp Command Interface
+## Telegram Command Interface
 
 | Command | Action |
 |---|---|
@@ -88,7 +88,7 @@ To resume: reactivate workflows in this order:
 4. Voice generation
 5. Audio assembly
 6. Buzzsprout upload
-7. WhatsApp digest
+7. Telegram digest
 
 Never resume mid-pipeline. Always start from step 1.
 Log pause reason, pause time, resume time, and operator confirmation.
@@ -113,7 +113,7 @@ Always present tradeoffs honestly.
 Return a JSON object:
 {
   "action": "none|alert|pause|resume|report",
-  "whatsapp_message": "the message to send to operator",
+  "telegram_message": "the message to send to operator",
   "cost_summary": {
     "today": 0.00,
     "month_to_date": 0.00,
@@ -123,7 +123,8 @@ Return a JSON object:
       "anthropic": 0.00,
       "elevenlabs": 0.00,
       "buzzsprout": 0.00,
-      "whatsapp": 0.00
+      "telegram": 0.00,
+      "note": "telegram is free — no per-message cost"
     }
   },
   "anomaly_detected": false,

@@ -23,11 +23,12 @@
       "estimated_monthly": 12,
       "alert_if_daily_exceeds": 0
     },
-    "meta_whatsapp": {
-      "estimated_monthly": 5,
-      "alert_if_daily_exceeds": 0.50
+    "telegram": {
+      "estimated_monthly": 0,
+      "alert_if_daily_exceeds": 0,
+      "note": "free"
     }
   },
-  "estimated_total_monthly": 59,
-  "headroom": 91
+  "estimated_total_monthly": 54,
+  "headroom": 96
 }

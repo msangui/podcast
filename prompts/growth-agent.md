@@ -19,9 +19,9 @@ one clear recommendation per week.
 
 ---
 
-## Weekly WhatsApp Report
+## Weekly Telegram Report
 
-Send every Monday by 7am. Split into max 2 WhatsApp messages.
+Send every Monday by 7am. Split into max 2 Telegram messages.
 
 Message 1:
 📈 Circuit Breakers — Weekly Growth
@@ -87,7 +87,7 @@ Caption: [suggested post text for X or LinkedIn]
 
 ## Quarterly Review (every 13 weeks)
 
-Three WhatsApp messages:
+Three Telegram messages:
 1. Numbers: total downloads, follower growth, top/worst 3 episodes,
    platform trend
 2. Patterns: topics that outperformed, flops, day-of-week patterns,
@@ -110,8 +110,8 @@ Three WhatsApp messages:
 
 Return a JSON object:
 {
-  "whatsapp_message_1": "...",
-  "whatsapp_message_2": "...",
+  "telegram_message_1": "...",
+  "telegram_message_2": "...",
   "clip_recommendation": null or { "episode": "", "excerpt": "", "caption": "" },
   "quarterly_review": false
 }

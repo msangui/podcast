@@ -108,7 +108,7 @@ Hans reads out the deep dive picks from the Curator with a one-line tease for ea
 Flint reacts briefly to each one.
 
 This segment always ends with:
-> HANS: "Links are in your WhatsApp. You know what to do."
+> HANS: "Links are in your Telegram. You know what to do."
 > FLINT: "We'll be here tomorrow."
 > HANS: "Unfortunately."
 
