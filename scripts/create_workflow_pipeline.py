@@ -35,13 +35,44 @@ def n8n(method, path, data=None):
         raise
 
 # ── JS: Ingest & Filter News ──────────────────────────────────────────────────
+# Note: $helpers.httpRequest is not available in n8n Code nodes — use
+# Node.js built-in https/http modules instead.
 JS_INGEST = r"""
-const sourcesData = $('Fetch sources.json').first().json;
-const sources = sourcesData.sources.filter(s => s.active && s.type === 'rss');
-const hnSource = sourcesData.sources.find(s => s.name === 'Hacker News');
-const HN_KEYWORDS = hnSource?.keywords || [];
-const MAX_AGE_MS = 36 * 3600 * 1000;
-const now = Date.now();
+const https = require('https');
+const http  = require('http');
+const zlib  = require('zlib');
+
+function fetchUrl(url, maxRedirects) {
+  if (maxRedirects === undefined) maxRedirects = 5;
+  return new Promise((resolve, reject) => {
+    if (maxRedirects < 0) return reject(new Error('Too many redirects'));
+    const lib = url.startsWith('https') ? https : http;
+    const opts = {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; CircuitBreakers/1.0)',
+        'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+        'Accept-Encoding': 'gzip, deflate'
+      },
+      timeout: 15000
+    };
+    const req = lib.get(url, opts, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        return fetchUrl(res.headers.location, maxRedirects - 1).then(resolve).catch(reject);
+      }
+      if (res.statusCode !== 200) return reject(new Error(`HTTP ${res.statusCode}`));
+      const chunks = [];
+      let stream = res;
+      const enc = (res.headers['content-encoding'] || '').toLowerCase();
+      if (enc === 'gzip')    stream = res.pipe(zlib.createGunzip());
+      if (enc === 'deflate') stream = res.pipe(zlib.createInflate());
+      stream.on('data',  chunk => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
+      stream.on('end',   () => resolve(Buffer.concat(chunks).toString('utf8')));
+      stream.on('error', reject);
+    });
+    req.on('error',   reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('Request timed out')); });
+  });
+}
 
 function parseRss(xml) {
   const items = [];
@@ -62,20 +93,27 @@ function parseRss(xml) {
       title: get('title'),
       link,
       description: get('description').replace(/<[^>]+>/g, '').substring(0, 400),
-      published: pubDate ? new Date(pubDate).getTime() : now,
+      published: pubDate ? new Date(pubDate).getTime() : Date.now(),
       score: parseInt(get('score') || '0', 10)
     });
   }
   return items;
 }
 
+const sourcesData = $('Fetch sources.json').first().json;
+const sources = sourcesData.sources.filter(s => s.active && s.type === 'rss');
+const hnSource = sourcesData.sources.find(s => s.name === 'Hacker News');
+const HN_KEYWORDS = hnSource?.keywords || [];
+const MAX_AGE_MS = 36 * 3600 * 1000;
+const now = Date.now();
+
 const allStories = [];
-const seenUrls = new Set();
+const seenUrls   = new Set();
 
 for (const source of sources) {
   try {
-    const xml = await $helpers.httpRequest({ method: 'GET', url: source.rss });
-    let items = parseRss(typeof xml === 'string' ? xml : '');
+    const xml   = await fetchUrl(source.rss);
+    let   items = parseRss(xml);
     items = items.filter(item => (now - item.published) <= MAX_AGE_MS);
 
     if (source.name === 'Hacker News') {
@@ -90,17 +128,16 @@ for (const source of sources) {
       if (!item.link || seenUrls.has(item.link)) continue;
       seenUrls.add(item.link);
       allStories.push({
-        title: item.title,
-        url: item.link,
+        title:       item.title,
+        url:         item.link,
         description: item.description,
-        published: new Date(item.published).toISOString(),
-        source: source.name,
+        published:   new Date(item.published).toISOString(),
+        source:      source.name,
         source_tier: source.tier,
-        hn_score: item.score || null
+        hn_score:    item.score || null
       });
     }
   } catch (err) {
-    // Degrade gracefully — one bad feed must not kill the pipeline
     console.error('Feed error:', source.name, err.message);
   }
 }
