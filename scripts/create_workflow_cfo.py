@@ -56,15 +56,16 @@ return [{ json: { user_message: userMessage, system_prompt: prompt, _chat_id: ch
 
 # ── Code node: parse Claude CFO response ─────────────────────────────────────
 JS_PARSE = r"""
-const claudeOutput = $input.first().json;
-const rawText = claudeOutput.content[0].text.trim();
-
-let jsonStr = rawText;
-const fenceMatch = jsonStr.match(/^```(?:json)?\n?([\s\S]*?)\n?```$/);
-if (fenceMatch) jsonStr = fenceMatch[1].trim();
-
-const parsed = JSON.parse(jsonStr);
-const chatId = $('Build CFO Input').first().json._chat_id;
+function extractJson(text) {
+  const fences = [...text.matchAll(/```(?:json)?\s*\n([\s\S]*?)\n```/g)];
+  if (fences.length > 0) return fences[fences.length - 1][1].trim();
+  const bare = text.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+  if (bare) return bare[1].trim();
+  return text.trim();
+}
+const rawText = $input.first().json.content[0].text;
+const parsed  = JSON.parse(extractJson(rawText));
+const chatId  = $('Build CFO Input').first().json._chat_id;
 
 return [{
   json: {

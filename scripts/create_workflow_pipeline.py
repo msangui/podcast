@@ -137,11 +137,15 @@ return [{ json: { system_prompt: prompt, user_message: userMessage } }];
 
 # ── JS: Parse Curator Response ────────────────────────────────────────────────
 JS_PARSE_CURATOR = r"""
-const raw = $input.first().json.content[0].text.trim();
-let jsonStr = raw;
-const fence = raw.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?```$/);
-if (fence) jsonStr = fence[1].trim();
-const brief = JSON.parse(jsonStr);
+function extractJson(text) {
+  // Find all code fences anywhere in the response (Claude adds preamble text)
+  const fences = [...text.matchAll(/```(?:json)?\s*\n([\s\S]*?)\n```/g)];
+  if (fences.length > 0) return fences[fences.length - 1][1].trim();
+  const bare = text.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+  if (bare) return bare[1].trim();
+  return text.trim();
+}
+const brief = JSON.parse(extractJson($input.first().json.content[0].text));
 return [{ json: { brief } }];
 """
 
@@ -171,14 +175,14 @@ return [{ json: { system_prompt: prompt, user_message: userMessage } }];
 JS_PARSE_WRITER = r"""
 const raw = $input.first().json.content[0].text;
 
-// Find all JSON fence blocks; last one is the episode metadata
+// Last code fence = episode metadata JSON
 let metadata = {};
 const fences = [...raw.matchAll(/```(?:json)?\s*\n([\s\S]*?)\n```/g)];
 if (fences.length > 0) {
   try { metadata = JSON.parse(fences[fences.length - 1][1].trim()); } catch(e) {}
 }
 
-// Script is everything before the last fence block
+// Script = everything before the last fence block
 const lastFenceIdx = fences.length > 0
   ? raw.lastIndexOf(fences[fences.length - 1][0])
   : raw.length;

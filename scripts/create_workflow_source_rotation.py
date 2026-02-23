@@ -56,12 +56,14 @@ return [{ json: { system_prompt: prompt, user_message: userMessage, _chat_id: ch
 
 # ── JS: Parse Source Rotation Response ───────────────────────────────────────
 JS_PARSE = r"""
-const raw = $input.first().json.content[0].text.trim();
-let jsonStr = raw;
-const fence = raw.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?```$/);
-if (fence) jsonStr = fence[1].trim();
-
-const parsed = JSON.parse(jsonStr);
+function extractJson(text) {
+  const fences = [...text.matchAll(/```(?:json)?\s*\n([\s\S]*?)\n```/g)];
+  if (fences.length > 0) return fences[fences.length - 1][1].trim();
+  const bare = text.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+  if (bare) return bare[1].trim();
+  return text.trim();
+}
+const parsed = JSON.parse(extractJson($input.first().json.content[0].text));
 const chatId = $('Build Source Rotation Input').first().json._chat_id;
 
 return [{
