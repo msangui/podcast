@@ -334,10 +334,11 @@ workflow = {
             "position": [240, 300]
         },
         # 2 – Fetch sources.json from GitHub
+        # GitHub raw serves JSON as text/plain — force responseFormat: json
         {
             "parameters": {
                 "url": "={{ $env.GITHUB_RAW_BASE_URL }}/config/sources.json",
-                "options": {}
+                "options": {"response": {"response": {"responseFormat": "json"}}}
             },
             "id": "fetch-sources",
             "name": "Fetch sources.json",
@@ -349,7 +350,7 @@ workflow = {
         {
             "parameters": {
                 "url": "={{ $env.GITHUB_RAW_BASE_URL }}/config/show-format.json",
-                "options": {}
+                "options": {"response": {"response": {"responseFormat": "json"}}}
             },
             "id": "fetch-show-format",
             "name": "Fetch show-format.json",

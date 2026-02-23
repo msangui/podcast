@@ -108,7 +108,7 @@ workflow = {
         {
             "parameters": {
                 "url": "={{ $env.GITHUB_RAW_BASE_URL }}/config/sources.json",
-                "options": {}
+                "options": {"response": {"response": {"responseFormat": "json"}}}
             },
             "id": "fetch-sources",
             "name": "Fetch sources.json",
