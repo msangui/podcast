@@ -43,35 +43,59 @@ def n8n(method, path, data=None):
         raise
 
 # ── Concatenate Audio ─────────────────────────────────────────────────────────
-# Adds a SAVE_LOCAL block that writes the finished MP3 to /episodes/
+# Uses ffmpeg concat demuxer — avoids multi-ID3-header issue that causes
+# QuickTime/Apple players to stop at the intro duration.
 JS_CONCAT_AUDIO = r"""
+const fs             = require('fs');
+const { execSync }   = require('child_process');
 const items = $input.all();
 const date  = new Date().toISOString().split('T')[0];
 const fname = `circuit-breakers-${date}.mp3`;
 
-// Prepend intro if it exists on disk
-const fs = require('fs');
-const introPath = '/assets/intro.mp3';
-const introBuffer = fs.existsSync(introPath) ? fs.readFileSync(introPath) : Buffer.alloc(0);
+const tmpDir = `/tmp/ep-${Date.now()}`;
+fs.mkdirSync(tmpDir, { recursive: true });
 
-const ttsBuffers = items.map(item => {
+const segFiles = [];
+
+const introPath = '/assets/intro.mp3';
+if (fs.existsSync(introPath)) {
+  const dest = `${tmpDir}/000-intro.mp3`;
+  fs.copyFileSync(introPath, dest);
+  segFiles.push(dest);
+}
+
+items.forEach((item, i) => {
   const b64 = item.json.audio_b64 || '';
-  return Buffer.from(b64, 'base64');
+  if (!b64) return;
+  const seg = Buffer.from(b64, 'base64');
+  const dest = `${tmpDir}/${String(i + 1).padStart(4, '0')}-tts.mp3`;
+  fs.writeFileSync(dest, seg);
+  segFiles.push(dest);
 });
 
-const combined = Buffer.concat([introBuffer, ...ttsBuffers]);
+const listFile = `${tmpDir}/list.txt`;
+fs.writeFileSync(listFile, segFiles.map(f => `file '${f}'`).join('\n'));
 
-// Save locally when SAVE_LOCAL=true
+const outFile = `${tmpDir}/combined.mp3`;
+execSync(
+  `/usr/local/bin/ffmpeg -y -f concat -safe 0 -i "${listFile}" -c copy "${outFile}"`,
+  { timeout: 120000 }
+);
+
+const combined = fs.readFileSync(outFile);
+
 if ($env.SAVE_LOCAL === 'true') {
   fs.mkdirSync('/episodes', { recursive: true });
   fs.writeFileSync(`/episodes/${fname}`, combined);
 }
 
+try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (e) {}
+
 return [{
   json: {
     file_name:    fname,
     line_count:   items.length,
-    has_intro:    introBuffer.length > 0,
+    has_intro:    segFiles.length > items.length,
     combined_b64: combined.toString('base64')
   }
 }];
