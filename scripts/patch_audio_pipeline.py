@@ -111,68 +111,70 @@ return results;
 """
 
 # ── Concatenate Audio ─────────────────────────────────────────────────────────
-# Reads audio_b64 from json (reliable), writes combined_b64 to json for upload
+# Two-step process:
+#   1. Concat all TTS segments into tts_all.mp3
+#   2. Mix intro (ducked at t=12s) with TTS delayed by 12s — hosts come in
+#      while the intro music is still playing, music fades out at ~19s
 JS_CONCAT_AUDIO = r"""
-const fs             = require('fs');
-const { execSync }   = require('child_process');
+const fs           = require('fs');
+const { execSync } = require('child_process');
 const items = $input.all();
 const date  = new Date().toISOString().split('T')[0];
 const fname = `circuit-breakers-${date}.mp3`;
 
-// Write each segment to a temp dir and use ffmpeg concat demuxer.
-// Naive Buffer.concat produces multi-header MP3s that confuse QuickTime/Apple
-// players (they read only the first ID3 header/duration). ffmpeg normalises
-// everything into a single well-formed stream.
 const tmpDir = `/tmp/ep-${Date.now()}`;
 fs.mkdirSync(tmpDir, { recursive: true });
 
+// Write TTS segments
 const segFiles = [];
-
-// Intro
-const introPath = '/assets/intro.mp3';
-if (fs.existsSync(introPath)) {
-  const dest = `${tmpDir}/000-intro.mp3`;
-  fs.copyFileSync(introPath, dest);
-  segFiles.push(dest);
-}
-
-// TTS lines (already in order by line_index)
 items.forEach((item, i) => {
   const b64 = item.json.audio_b64 || '';
   if (!b64) return;
-  const seg = Buffer.from(b64, 'base64');
-  const dest = `${tmpDir}/${String(i + 1).padStart(4, '0')}-tts.mp3`;
-  fs.writeFileSync(dest, seg);
+  const dest = `${tmpDir}/${String(i).padStart(4, '0')}-tts.mp3`;
+  fs.writeFileSync(dest, Buffer.from(b64, 'base64'));
   segFiles.push(dest);
 });
 
-// Build ffmpeg concat list
+// Step 1: concat all TTS into one file
 const listFile = `${tmpDir}/list.txt`;
 fs.writeFileSync(listFile, segFiles.map(f => `file '${f}'`).join('\n'));
-
-// Run ffmpeg — concat demuxer + copy codec = lossless, fast, correct headers
-const outFile = `${tmpDir}/combined.mp3`;
+const ttsFile = `${tmpDir}/tts_all.mp3`;
 execSync(
-  `/usr/local/bin/ffmpeg -y -f concat -safe 0 -i "${listFile}" -acodec libmp3lame -q:a 4 "${outFile}"`,
+  `/usr/local/bin/ffmpeg -y -f concat -safe 0 -i "${listFile}" -acodec libmp3lame -q:a 4 "${ttsFile}"`,
   { timeout: 120000 }
 );
 
+// Step 2: mix intro (with duck at t=12s) + TTS delayed 12s; fallback to TTS only
+const introPath = '/assets/intro.mp3';
+const outFile   = `${tmpDir}/combined.mp3`;
+
+if (fs.existsSync(introPath)) {
+  execSync(
+    `/usr/local/bin/ffmpeg -y -i "${introPath}" -i "${ttsFile}" ` +
+    `-filter_complex "[0:a]volume='if(lt(t,12),1,0.25)':eval=frame[iv];` +
+    `[1:a]adelay=12000|12000[td];` +
+    `[iv][td]amix=inputs=2:duration=longest:normalize=0[out]" ` +
+    `-map "[out]" -acodec libmp3lame -q:a 4 "${outFile}"`,
+    { timeout: 180000 }
+  );
+} else {
+  fs.copyFileSync(ttsFile, outFile);
+}
+
 const combined = fs.readFileSync(outFile);
 
-// Save locally when SAVE_LOCAL=true
 if ($env.SAVE_LOCAL === 'true') {
   fs.mkdirSync('/episodes', { recursive: true });
   fs.writeFileSync(`/episodes/${fname}`, combined);
 }
 
-// Cleanup temp dir
 try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (e) {}
 
 return [{
   json: {
     file_name:    fname,
     line_count:   items.length,
-    has_intro:    segFiles.length > items.length,
+    has_intro:    fs.existsSync(introPath),
     combined_b64: combined.toString('base64')
   }
 }];
