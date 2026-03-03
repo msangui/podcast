@@ -51,9 +51,9 @@
       "target_words": 400,
       "deep_dive_count": { "min": 3, "max": 4 },
       "closing_lines": {
-        "claire": "Links are in your Telegram. You know what to do.",
-        "flint": "We'll be here tomorrow.",
-        "claire_final": "Unfortunately."
+        "flint": "Links are in your Telegram. You know what to do.",
+        "claire": "We'll be here tomorrow.",
+        "flint_final": "Unfortunately."
       }
     },
     "sign_off": {
