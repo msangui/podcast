@@ -2,3 +2,4 @@ logs/
 .env
 *.mp3
 assets/
+config/google-service-account.json
