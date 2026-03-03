@@ -78,7 +78,7 @@ fs.writeFileSync(listFile, segFiles.map(f => `file '${f}'`).join('\n'));
 
 const outFile = `${tmpDir}/combined.mp3`;
 execSync(
-  `/usr/local/bin/ffmpeg -y -f concat -safe 0 -i "${listFile}" -c copy "${outFile}"`,
+  `/usr/local/bin/ffmpeg -y -f concat -safe 0 -i "${listFile}" -acodec libmp3lame -q:a 4 "${outFile}"`,
   { timeout: 120000 }
 );
 
