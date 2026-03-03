@@ -5,16 +5,28 @@
   "words_per_minute": 136,
   "hosts": {
     "host_1": {
-      "name": "HANS",
-      "voice_id": "DbOYXVDblUrDdhlB3rjA",
-      "accent": "Austrian",
-      "speaker_tag": "HANS:"
+      "name": "CLAIRE",
+      "voice_id": "4H51QyuSmftmRXcPsyuT",
+      "accent": "Californian",
+      "speaker_tag": "CLAIRE:",
+      "voice_settings": {
+        "stability": 0.28,
+        "similarity_boost": 0.75,
+        "style": 0.40,
+        "use_speaker_boost": true
+      }
     },
     "host_2": {
       "name": "FLINT",
       "voice_id": "YHQkX6Ayz2dYGz3boNmC",
       "accent": "Texan",
-      "speaker_tag": "FLINT:"
+      "speaker_tag": "FLINT:",
+      "voice_settings": {
+        "stability": 0.45,
+        "similarity_boost": 0.75,
+        "style": 0.20,
+        "use_speaker_boost": true
+      }
     }
   },
   "segments": {
@@ -38,18 +50,18 @@
       "target_words": 400,
       "deep_dive_count": { "min": 3, "max": 4 },
       "closing_lines": {
-        "hans": "Links are in your WhatsApp. You know what to do.",
+        "claire": "Links are in your Telegram. You know what to do.",
         "flint": "We'll be here tomorrow.",
-        "hans_final": "Unfortunately."
+        "claire_final": "Unfortunately."
       }
     },
     "sign_off": {
       "duration_minutes": 2,
       "target_words": 250,
-      "format": "Flint prediction + Hans rates it delusional to obvious",
+      "format": "Flint prediction + Claire rates it from a scientific credibility standpoint",
       "closing_lines": {
         "flint": "I stand by it.",
-        "hans": "You always do."
+        "claire": "You always do."
       }
     }
   },

@@ -29,7 +29,7 @@ shape what the show covers and how much time each story deserves.
 ### Tier 2 — Include for variety (1-2 per episode max)
 - Quirky or unexpected AI applications
 - Community reactions (HN threads, notable discourse)
-- A story that HANS would find annoying or FLINT would find delightful
+- A story that CLAIRE would find scientifically interesting or FLINT would find delightful
 
 ### Exclude
 - PR fluff with no substance

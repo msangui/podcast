@@ -241,22 +241,22 @@ return [{
 JS_SPLIT_LINES = r"""
 const writerOut   = $('Parse Writer Response').first().json;
 const showFormat  = $('Fetch show-format.json').first().json;
-const hansVoiceId  = showFormat.hosts.host_1.voice_id;
+const claireVoiceId  = showFormat.hosts.host_1.voice_id;
 const flintVoiceId = showFormat.hosts.host_2.voice_id;
 
 const lines = writerOut.script
   .split('\n')
   .map(l => l.trim())
-  .filter(l => l.startsWith('HANS:') || l.startsWith('FLINT:'));
+  .filter(l => l.startsWith('CLAIRE:') || l.startsWith('FLINT:'));
 
 return lines.map((line, index) => {
-  const isHans = line.startsWith('HANS:');
-  const text   = line.replace(/^(HANS|FLINT):\s*/, '').trim();
+  const isClaire = line.startsWith('CLAIRE:');
+  const text   = line.replace(/^(CLAIRE|FLINT):\s*/, '').trim();
   return {
     json: {
       text,
-      voice_id:      isHans ? hansVoiceId  : flintVoiceId,
-      speaker:       isHans ? 'HANS'       : 'FLINT',
+      voice_id:      isClaire ? claireVoiceId  : flintVoiceId,
+      speaker:       isClaire ? 'CLAIRE'       : 'FLINT',
       line_index:    index,
       total_lines:   lines.length,
       episode_title: writerOut.episode_title
@@ -507,7 +507,7 @@ workflow = {
             "typeVersion": 2,
             "position": [2660, 300]
         },
-        # 13 – Split Script into Lines (one item per HANS/FLINT line)
+        # 13 – Split Script into Lines (one item per CLAIRE/FLINT line)
         {
             "parameters": {"jsCode": JS_SPLIT_LINES},
             "id": "split-lines",

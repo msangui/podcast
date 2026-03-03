@@ -15,6 +15,7 @@ services:
       # n8n core
       - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
       - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      - NODE_FUNCTION_ALLOW_BUILTIN=https,http,zlib,stream,buffer,url,fs,path
       - N8N_HOST=${N8N_HOST:-localhost}
       - N8N_PORT=5678
       - N8N_PROTOCOL=${N8N_PROTOCOL:-http}
@@ -27,10 +28,11 @@ services:
       - GITHUB_RAW_BASE_URL=${GITHUB_RAW_BASE_URL}
       - N8N_API_KEY=${N8N_API_KEY}
       - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
-      - ELEVENLABS_HANS_VOICE_ID=${ELEVENLABS_HANS_VOICE_ID}
+      - ELEVENLABS_CLAIRE_VOICE_ID=${ELEVENLABS_CLAIRE_VOICE_ID}
       - ELEVENLABS_FLINT_VOICE_ID=${ELEVENLABS_FLINT_VOICE_ID}
       - BUZZSPROUT_API_KEY=${BUZZSPROUT_API_KEY}
       - BUZZSPROUT_PODCAST_ID=${BUZZSPROUT_PODCAST_ID}
+      - SAVE_LOCAL=${SAVE_LOCAL:-false}
       - N8N_WORKFLOW_ID_DAILY_PIPELINE=${N8N_WORKFLOW_ID_DAILY_PIPELINE}
       - N8N_WORKFLOW_ID_CONCIERGE=${N8N_WORKFLOW_ID_CONCIERGE}
       - N8N_WORKFLOW_ID_CFO=${N8N_WORKFLOW_ID_CFO}
@@ -39,6 +41,7 @@ services:
       - n8n_data:/home/node/.n8n
       - ./logs:/logs
       - ./assets:/assets
+      - ./episodes:/episodes
     depends_on:
       postgres:
         condition: service_healthy
