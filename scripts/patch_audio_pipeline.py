@@ -51,13 +51,15 @@ def n8n(method, path, data=None):
 JS_GENERATE_VOICE = r"""
 const https = require('https');
 
-function postElevenlabs(voiceId, text, voiceSettings, apiKey) {
+function postElevenlabs(voiceId, text, voiceSettings, speed, apiKey) {
   return new Promise((resolve, reject) => {
-    const body = JSON.stringify({
+    const bodyObj = {
       text,
       model_id: 'eleven_multilingual_v2',
       voice_settings: voiceSettings
-    });
+    };
+    if (speed) bodyObj.speed = speed;
+    const body = JSON.stringify(bodyObj);
     const req = https.request({
       hostname: 'api.elevenlabs.io',
       path: `/v1/text-to-speech/${voiceId}`,
@@ -91,8 +93,8 @@ const apiKey = $env.ELEVENLABS_API_KEY;
 const results = [];
 
 for (const item of lines) {
-  const { text, voice_id, voice_settings, speaker, line_index, total_lines, episode_title } = item.json;
-  const audioBuffer = await postElevenlabs(voice_id, text, voice_settings, apiKey);
+  const { text, voice_id, voice_settings, speed, speaker, line_index, total_lines, episode_title } = item.json;
+  const audioBuffer = await postElevenlabs(voice_id, text, voice_settings, speed, apiKey);
   results.push({
     json: {
       speaker, line_index, total_lines, episode_title,
@@ -111,20 +113,51 @@ return results;
 # ── Concatenate Audio ─────────────────────────────────────────────────────────
 # Reads audio_b64 from json (reliable), writes combined_b64 to json for upload
 JS_CONCAT_AUDIO = r"""
+const fs             = require('fs');
+const { execSync }   = require('child_process');
 const items = $input.all();
 const date  = new Date().toISOString().split('T')[0];
 const fname = `circuit-breakers-${date}.mp3`;
 
-const fs = require('fs');
-const introPath = '/assets/intro.mp3';
-const introBuffer = fs.existsSync(introPath) ? fs.readFileSync(introPath) : Buffer.alloc(0);
+// Write each segment to a temp dir and use ffmpeg concat demuxer.
+// Naive Buffer.concat produces multi-header MP3s that confuse QuickTime/Apple
+// players (they read only the first ID3 header/duration). ffmpeg normalises
+// everything into a single well-formed stream.
+const tmpDir = `/tmp/ep-${Date.now()}`;
+fs.mkdirSync(tmpDir, { recursive: true });
 
-const ttsBuffers = items.map(item => {
+const segFiles = [];
+
+// Intro
+const introPath = '/assets/intro.mp3';
+if (fs.existsSync(introPath)) {
+  const dest = `${tmpDir}/000-intro.mp3`;
+  fs.copyFileSync(introPath, dest);
+  segFiles.push(dest);
+}
+
+// TTS lines (already in order by line_index)
+items.forEach((item, i) => {
   const b64 = item.json.audio_b64 || '';
-  return Buffer.from(b64, 'base64');
+  if (!b64) return;
+  const seg = Buffer.from(b64, 'base64');
+  const dest = `${tmpDir}/${String(i + 1).padStart(4, '0')}-tts.mp3`;
+  fs.writeFileSync(dest, seg);
+  segFiles.push(dest);
 });
 
-const combined = Buffer.concat([introBuffer, ...ttsBuffers]);
+// Build ffmpeg concat list
+const listFile = `${tmpDir}/list.txt`;
+fs.writeFileSync(listFile, segFiles.map(f => `file '${f}'`).join('\n'));
+
+// Run ffmpeg — concat demuxer + copy codec = lossless, fast, correct headers
+const outFile = `${tmpDir}/combined.mp3`;
+execSync(
+  `/usr/local/bin/ffmpeg -y -f concat -safe 0 -i "${listFile}" -c copy "${outFile}"`,
+  { timeout: 120000 }
+);
+
+const combined = fs.readFileSync(outFile);
 
 // Save locally when SAVE_LOCAL=true
 if ($env.SAVE_LOCAL === 'true') {
@@ -132,11 +165,14 @@ if ($env.SAVE_LOCAL === 'true') {
   fs.writeFileSync(`/episodes/${fname}`, combined);
 }
 
+// Cleanup temp dir
+try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (e) {}
+
 return [{
   json: {
     file_name:    fname,
     line_count:   items.length,
-    has_intro:    introBuffer.length > 0,
+    has_intro:    segFiles.length > items.length,
     combined_b64: combined.toString('base64')
   }
 }];

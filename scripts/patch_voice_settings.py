@@ -40,13 +40,15 @@ JS_SPLIT = r"""
 const writerOut   = $('Parse Writer Response').first().json;
 const showFormat  = $('Fetch show-format.json').first().json;
 
-// Env vars win for voice ID; show-format.json supplies voice_settings
-const claireVoiceId   = $env.ELEVENLABS_CLAIRE_VOICE_ID  || showFormat.hosts.host_1.voice_id;
-const flintVoiceId  = $env.ELEVENLABS_FLINT_VOICE_ID || showFormat.hosts.host_2.voice_id;
-const claireSettings  = showFormat.hosts.host_1.voice_settings
-                   || { stability: 0.28, similarity_boost: 0.75, style: 0.40, use_speaker_boost: true };
-const flintSettings = showFormat.hosts.host_2.voice_settings
-                   || { stability: 0.45, similarity_boost: 0.75, style: 0.20, use_speaker_boost: true };
+// Env vars win for voice ID; show-format.json supplies voice_settings and speed
+const claireVoiceId  = $env.ELEVENLABS_CLAIRE_VOICE_ID || showFormat.hosts.host_1.voice_id;
+const flintVoiceId   = $env.ELEVENLABS_FLINT_VOICE_ID  || showFormat.hosts.host_2.voice_id;
+const claireSettings = showFormat.hosts.host_1.voice_settings
+                    || { stability: 0.28, similarity_boost: 0.75, style: 0.40, use_speaker_boost: true };
+const flintSettings  = showFormat.hosts.host_2.voice_settings
+                    || { stability: 0.30, similarity_boost: 0.75, style: 0.35, use_speaker_boost: true };
+const claireSpeed    = showFormat.hosts.host_1.speed || null;
+const flintSpeed     = showFormat.hosts.host_2.speed || null;
 
 const lines = writerOut.script
   .split('\n')
@@ -55,16 +57,17 @@ const lines = writerOut.script
 
 return lines.map((line, index) => {
   const isClaire = line.startsWith('CLAIRE:');
-  const text   = line.replace(/^(CLAIRE|FLINT):\s*/, '').trim();
+  const text = line.replace(/^(CLAIRE|FLINT):\s*/, '').trim();
   return {
     json: {
       text,
-      voice_id:      isClaire ? claireVoiceId   : flintVoiceId,
-      voice_settings: isClaire ? claireSettings  : flintSettings,
-      speaker:       isClaire ? 'CLAIRE'        : 'FLINT',
-      line_index:    index,
-      total_lines:   lines.length,
-      episode_title: writerOut.episode_title
+      voice_id:       isClaire ? claireVoiceId  : flintVoiceId,
+      voice_settings: isClaire ? claireSettings : flintSettings,
+      speed:          isClaire ? claireSpeed    : flintSpeed,
+      speaker:        isClaire ? 'CLAIRE'       : 'FLINT',
+      line_index:     index,
+      total_lines:    lines.length,
+      episode_title:  writerOut.episode_title
     }
   };
 });
@@ -73,13 +76,15 @@ return lines.map((line, index) => {
 JS_GENERATE_VOICE = r"""
 const https = require('https');
 
-function postElevenlabs(voiceId, text, voiceSettings, apiKey) {
+function postElevenlabs(voiceId, text, voiceSettings, speed, apiKey) {
   return new Promise((resolve, reject) => {
-    const body = JSON.stringify({
+    const bodyObj = {
       text,
       model_id: 'eleven_multilingual_v2',
       voice_settings: voiceSettings
-    });
+    };
+    if (speed) bodyObj.speed = speed;
+    const body = JSON.stringify(bodyObj);
     const req = https.request({
       hostname: 'api.elevenlabs.io',
       path: `/v1/text-to-speech/${voiceId}`,
@@ -113,17 +118,13 @@ const apiKey = $env.ELEVENLABS_API_KEY;
 const results = [];
 
 for (const item of lines) {
-  const { text, voice_id, voice_settings, speaker, line_index, total_lines, episode_title } = item.json;
-  const audioBuffer = await postElevenlabs(voice_id, text, voice_settings, apiKey);
+  const { text, voice_id, voice_settings, speed, speaker, line_index, total_lines, episode_title } = item.json;
+  const audioBuffer = await postElevenlabs(voice_id, text, voice_settings, speed, apiKey);
   results.push({
-    json: { speaker, line_index, total_lines, episode_title, bytes: audioBuffer.length },
-    binary: {
-      data: {
-        data:     audioBuffer.toString('base64'),
-        mimeType: 'audio/mpeg',
-        fileName: `line-${line_index}.mp3`,
-        fileSize: audioBuffer.length
-      }
+    json: {
+      speaker, line_index, total_lines, episode_title,
+      bytes: audioBuffer.length,
+      audio_b64: audioBuffer.toString('base64')
     }
   });
   if (line_index < total_lines - 1) {

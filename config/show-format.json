@@ -21,10 +21,11 @@
       "voice_id": "YHQkX6Ayz2dYGz3boNmC",
       "accent": "Texan",
       "speaker_tag": "FLINT:",
+      "speed": 1.15,
       "voice_settings": {
-        "stability": 0.45,
+        "stability": 0.30,
         "similarity_boost": 0.75,
-        "style": 0.20,
+        "style": 0.35,
         "use_speaker_boost": true
       }
     }
