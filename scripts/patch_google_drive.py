@@ -47,36 +47,17 @@ def n8n(method, path, data=None):
         raise
 
 # ── Upload to Google Drive ─────────────────────────────────────────────────────
-# Runs only when SAVE_LOCAL=true. Uses a service account JSON key at
-# /config/google-service-account.json to authenticate via JWT → OAuth2 token,
-# then uploads the episode MP3 via the Drive API multipart endpoint.
+# Runs only when SAVE_LOCAL=true. Exchanges the OAuth2 refresh token stored in
+# GOOGLE_DRIVE_REFRESH_TOKEN for a short-lived access token, then uploads the
+# episode MP3 to the personal Drive folder via the multipart upload endpoint.
 JS_UPLOAD_GOOGLE_DRIVE = r"""
 if ($env.SAVE_LOCAL !== 'true') {
   return [{ json: { skipped: true, fileId: null, webViewLink: null } }];
 }
 
-const https  = require('https');
-const crypto = require('crypto');
-const fs     = require('fs');
+const https = require('https');
 
-const sa  = JSON.parse(fs.readFileSync('/config/google-service-account.json', 'utf8'));
-const now = Math.floor(Date.now() / 1000);
-
-// Build RS256-signed JWT for the service account
-const header  = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
-const payload = Buffer.from(JSON.stringify({
-  iss: sa.client_email,
-  scope: 'https://www.googleapis.com/auth/drive.file',
-  aud:  'https://oauth2.googleapis.com/token',
-  iat:  now,
-  exp:  now + 3600
-})).toString('base64url');
-
-const signer = crypto.createSign('RSA-SHA256');
-signer.update(`${header}.${payload}`);
-const jwt = `${header}.${payload}.${signer.sign(sa.private_key, 'base64url')}`;
-
-// Exchange JWT for an access token
+// Exchange refresh token for a short-lived access token
 function post(hostname, path, headers, body) {
   return new Promise((resolve, reject) => {
     const req = https.request({ hostname, path, method: 'POST', headers }, res => {
@@ -90,14 +71,20 @@ function post(hostname, path, headers, body) {
   });
 }
 
-const tokenBody = `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`;
-const tokenRes  = await post(
+const tokenBody = [
+  'grant_type=refresh_token',
+  `refresh_token=${encodeURIComponent($env.GOOGLE_DRIVE_REFRESH_TOKEN)}`,
+  `client_id=${encodeURIComponent($env.GOOGLE_OAUTH_CLIENT_ID)}`,
+  `client_secret=${encodeURIComponent($env.GOOGLE_OAUTH_CLIENT_SECRET)}`
+].join('&');
+
+const tokenRes = await post(
   'oauth2.googleapis.com', '/token',
   { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(tokenBody) },
   tokenBody
 );
 const { access_token: token } = JSON.parse(tokenRes.body);
-if (!token) throw new Error(`Token exchange failed: ${tokenRes.body}`);
+if (!token) throw new Error(`Token refresh failed: ${tokenRes.body}`);
 
 // Build multipart/related body: JSON metadata + MP3 binary
 const concatOut = $('Concatenate Audio').first().json;
