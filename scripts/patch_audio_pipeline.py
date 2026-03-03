@@ -151,7 +151,7 @@ const outFile   = `${tmpDir}/combined.mp3`;
 if (fs.existsSync(introPath)) {
   execSync(
     `/usr/local/bin/ffmpeg -y -i "${introPath}" -i "${ttsFile}" ` +
-    `-filter_complex "[0:a]volume='if(lt(t,12),1,if(lt(t,15),1-(t-12)/3*0.75,0.25))':eval=frame[iv];` +
+    `-filter_complex "[0:a]volume='if(lt(t,9),1,if(lt(t,12),0.8,if(lt(t,15),0.75-(t-12)/3*0.5,0.25)))':eval=frame[iv];` +
     `[1:a]adelay=12000|12000[td];` +
     `[iv][td]amix=inputs=2:duration=longest:normalize=0[out]" ` +
     `-map "[out]" -acodec libmp3lame -q:a 4 "${outFile}"`,
