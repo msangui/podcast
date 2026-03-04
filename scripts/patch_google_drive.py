@@ -47,17 +47,36 @@ def n8n(method, path, data=None):
         raise
 
 # ── Upload to Google Drive ─────────────────────────────────────────────────────
-# Runs only when SAVE_LOCAL=true. Exchanges the OAuth2 refresh token stored in
-# GOOGLE_DRIVE_REFRESH_TOKEN for a short-lived access token, then uploads the
-# episode MP3 to the personal Drive folder via the multipart upload endpoint.
+# Runs only when SAVE_LOCAL=true. Uses a service account JSON key at
+# /config/google-service-account.json to authenticate via JWT → OAuth2 token,
+# then uploads the episode MP3 via the Drive API multipart endpoint.
 JS_UPLOAD_GOOGLE_DRIVE = r"""
 if ($env.SAVE_LOCAL !== 'true') {
   return [{ json: { skipped: true, fileId: null, webViewLink: null } }];
 }
 
-const https = require('https');
+const https  = require('https');
+const crypto = require('crypto');
+const fs     = require('fs');
 
-// Exchange refresh token for a short-lived access token
+const sa  = JSON.parse(fs.readFileSync('/config/google-service-account.json', 'utf8'));
+const now = Math.floor(Date.now() / 1000);
+
+// Build RS256-signed JWT for the service account
+const header  = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
+const payload = Buffer.from(JSON.stringify({
+  iss: sa.client_email,
+  scope: 'https://www.googleapis.com/auth/drive.file',
+  aud:  'https://oauth2.googleapis.com/token',
+  iat:  now,
+  exp:  now + 3600
+})).toString('base64url');
+
+const signer = crypto.createSign('RSA-SHA256');
+signer.update(`${header}.${payload}`);
+const jwt = `${header}.${payload}.${signer.sign(sa.private_key, 'base64url')}`;
+
+// Exchange JWT for an access token
 function post(hostname, path, headers, body) {
   return new Promise((resolve, reject) => {
     const req = https.request({ hostname, path, method: 'POST', headers }, res => {
@@ -71,20 +90,14 @@ function post(hostname, path, headers, body) {
   });
 }
 
-const tokenBody = [
-  'grant_type=refresh_token',
-  `refresh_token=${encodeURIComponent($env.GOOGLE_DRIVE_REFRESH_TOKEN)}`,
-  `client_id=${encodeURIComponent($env.GOOGLE_OAUTH_CLIENT_ID)}`,
-  `client_secret=${encodeURIComponent($env.GOOGLE_OAUTH_CLIENT_SECRET)}`
-].join('&');
-
-const tokenRes = await post(
+const tokenBody = `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`;
+const tokenRes  = await post(
   'oauth2.googleapis.com', '/token',
   { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(tokenBody) },
   tokenBody
 );
 const { access_token: token } = JSON.parse(tokenRes.body);
-if (!token) throw new Error(`Token refresh failed: ${tokenRes.body}`);
+if (!token) throw new Error(`Token exchange failed: ${tokenRes.body}`);
 
 // Build multipart/related body: JSON metadata + MP3 binary
 const concatOut = $('Concatenate Audio').first().json;
@@ -105,7 +118,7 @@ const uploadBody = Buffer.concat([
 const uploadRes = await new Promise((resolve, reject) => {
   const req = https.request({
     hostname: 'www.googleapis.com',
-    path:     '/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink',
+    path:     '/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink&supportsAllDrives=true',
     method:   'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -129,7 +142,7 @@ const uploadRes = await new Promise((resolve, reject) => {
 return [{ json: { fileId: uploadRes.id, webViewLink: uploadRes.webViewLink, fileName } }];
 """
 
-# ── Write Run Log (updated to capture Drive URL) ───────────────────────────────
+# ── Write Run Log (updated: new paths + Drive URL + editorial info) ────────────
 JS_WRITE_LOG = r"""
 const fs        = require('fs');
 const writerOut = $('Parse Writer Response').first().json;
@@ -137,13 +150,24 @@ const buzzOut   = $('Upload to Buzzsprout').first().json;
 const driveOut  = $('Upload to Google Drive').first().json;
 const ingest    = $('Ingest & Filter News').first().json;
 const brief     = $('Parse Curator Response').first().json.brief;
+const concatOut = $('Concatenate Audio').first().json;
 const today     = new Date().toISOString().split('T')[0];
 
 const coveredUrls = (brief.stories || []).map(s => s.url).filter(Boolean);
 
-const localPath = $env.SAVE_LOCAL === 'true'
-  ? `/episodes/circuit-breakers-${today}.mp3`
-  : null;
+const episodeDir     = concatOut.episode_dir || `/episodes/${today}`;
+const localPath      = $env.SAVE_LOCAL === 'true' ? `${episodeDir}/${concatOut.file_name}` : null;
+const transcriptPath = $env.SAVE_LOCAL === 'true' ? `${episodeDir}/transcript.txt` : null;
+
+let editorialChanges    = [];
+let hallucinationsFound = [];
+let editorApproved      = null;
+try {
+  const editorOut      = $('Editor Review').first().json;
+  editorialChanges     = editorOut.editorial_changes    || [];
+  hallucinationsFound  = editorOut.hallucinations_found || [];
+  editorApproved       = editorOut.editor_approved ?? true;
+} catch (e) {}
 
 const log = {
   date:                  today,
@@ -155,6 +179,10 @@ const log = {
   buzzsprout_episode_id: buzzOut.id,
   buzzsprout_audio_url:  buzzOut.audio_url,
   local_path:            localPath,
+  transcript_path:       transcriptPath,
+  editorial_changes:     editorialChanges,
+  hallucinations_found:  hallucinationsFound,
+  editor_approved:       editorApproved,
   google_drive_url:      driveOut.webViewLink || null,
   status:                'success'
 };

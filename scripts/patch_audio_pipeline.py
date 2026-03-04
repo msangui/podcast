@@ -161,11 +161,21 @@ if (fs.existsSync(introPath)) {
   fs.copyFileSync(ttsFile, outFile);
 }
 
-const combined = fs.readFileSync(outFile);
+const combined   = fs.readFileSync(outFile);
+const episodeDir = `/episodes/${date}`;
 
 if ($env.SAVE_LOCAL === 'true') {
-  fs.mkdirSync('/episodes', { recursive: true });
-  fs.writeFileSync(`/episodes/${fname}`, combined);
+  fs.mkdirSync(episodeDir, { recursive: true });
+  fs.writeFileSync(`${episodeDir}/${fname}`, combined);
+
+  // Save transcript — prefer Editor Review output (corrected script), fall back to writer
+  let transcript = '';
+  try {
+    transcript = $('Editor Review').first().json.script || '';
+  } catch (_) {
+    try { transcript = $('Parse Writer Response').first().json.script || ''; } catch (_) {}
+  }
+  if (transcript) fs.writeFileSync(`${episodeDir}/transcript.txt`, transcript);
 }
 
 try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (e) {}
@@ -173,6 +183,7 @@ try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (e) {}
 return [{
   json: {
     file_name:    fname,
+    episode_dir:  episodeDir,
     line_count:   items.length,
     has_intro:    fs.existsSync(introPath),
     combined_b64: combined.toString('base64')
